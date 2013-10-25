@@ -172,33 +172,33 @@ module norm where
 
 data Ty[_] : Ty → ★ where
   []    : ∀ {A} → Ty[ A ]
-  [_]⇒- : ∀ {A} (pᴬ : Ty[ A ]) {B : Ty} → Ty[ A ⇒ B ]
+  [_]⇒- : ∀ {A} (pA : Ty[ A ]) {B : Ty} → Ty[ A ⇒ B ]
   -⇒[_] : ∀ {B} {A : Ty} (pᴮ : Ty[ B ]) → Ty[ A ⇒ B ]
 
-[_]⇒_ : ∀ {A} (pᴬ : Ty[ A ]) (B : Ty) → Ty[ A ⇒ B ]
+[_]⇒_ : ∀ {A} (pA : Ty[ A ]) (B : Ty) → Ty[ A ⇒ B ]
 [ p ]⇒ _ = [ p ]⇒- 
 
 _⇒[_] : ∀ {B} (A : Ty) (pᴮ : Ty[ B ]) → Ty[ A ⇒ B ]
 _ ⇒[ p ] = -⇒[ p ]
 
-data Ctx[_·_] : ∀ {Γ A} → Γ ∋ A → (pᴬ : Ty[ A ]) → ★ where
-  [_],- : ∀ {Γ A} {A∈Γ : Γ ∋ A} {pᴬ : Ty[ A ]} (p : Ctx[ A∈Γ · pᴬ ]) {B : Ty} → Ctx[ pop B A∈Γ · pᴬ ]
-  -,[_] : ∀ {Γ A} (pᴬ : Ty[ A ]) → Ctx[ top {Γ} A · pᴬ ]
+data Ctx[_·_] : ∀ {Γ A} → Γ ∋ A → (pA : Ty[ A ]) → ★ where
+  [_],- : ∀ {Γ A} {A∈Γ : Γ ∋ A} {pA : Ty[ A ]} (pΓ : Ctx[ A∈Γ · pA ]) {B : Ty} → Ctx[ pop B A∈Γ · pA ]
+  -,[_] : ∀ {Γ A} (pA : Ty[ A ]) → Ctx[ top {Γ} A · pA ]
 
-[_],_ : ∀ {Γ A} {A∈Γ : Γ ∋ A} {pᴬ : Ty[ A ]} (p : Ctx[ A∈Γ · pᴬ ]) (B : Ty) → Ctx[ pop B A∈Γ · pᴬ ]
+[_],_ : ∀ {Γ A} {A∈Γ : Γ ∋ A} {pA : Ty[ A ]} (pΓ : Ctx[ A∈Γ · pA ]) (B : Ty) → Ctx[ pop B A∈Γ · pA ]
 [ p ], _ = [ p ],-
 
-_,[_] : ∀ (Γ : Ctx) {A : Ty} (pᴬ : Ty[ A ]) → Ctx[ top {Γ} A · pᴬ ]
+_,[_] : ∀ (Γ : Ctx) {A : Ty} (pA : Ty[ A ]) → Ctx[ top {Γ} A · pA ]
 _ ,[ p ] = -,[ p ]
 
 infix 0 _[⊢]_ _⊢[_] [_]⊢_
 infix 3 [_]⇒_ [_],_ _,[_]
 
 data _[⊢]_ : ∀ Γ C → ★ where
-  [_]⊢- : ∀ {Γ A} {x : Γ ∋ A} {pᴬ : Ty[ A ]} (p : Ctx[ x · pᴬ ]) {C : Ty} → Γ [⊢] C
+  [_]⊢- : ∀ {Γ A} {x : Γ ∋ A} {pA : Ty[ A ]} (pΓ : Ctx[ x · pA ]) {C : Ty} → Γ [⊢] C
   -⊢[_] : ∀ {Γ C} (pC : Ty[ C ]) → Γ [⊢] C
 
-[_]⊢_ : ∀ {Γ A} {x : Γ ∋ A} {pᴬ : Ty[ A ]} (p : Ctx[ x · pᴬ ]) (C : Ty) → Γ [⊢] C
+[_]⊢_ : ∀ {Γ A} {x : Γ ∋ A} {pA : Ty[ A ]} (pΓ : Ctx[ x · pA ]) (C : Ty) → Γ [⊢] C
 [ p ]⊢ _ = [ p ]⊢-
 
 _⊢[_] : ∀ Γ {C} (pC : Ty[ C ]) → Γ [⊢] C
@@ -286,29 +286,29 @@ data Rapp {Γ A B} : (pΓAB : Γ [⊢]2 A ⇒ B)
                     (pΓB  : Γ [⊢]2 B)
                   → ★ where
 
-  arg-fun∙ : ∀ {C} {pᴬ : Ty[ A ]}
+  arg-fun∙ : ∀ {C} {pA : Ty[ A ]}
                {x  : Γ ∋ C} {pC : Ty[ C ]} {pΓ : Ctx[ x · pC ]}
-             → Rapp [ Γ ⊢[ [ pᴬ ]⇒ B ] ]
-                    [ [ pΓ ]⊢ A & Γ ⊢[ pᴬ ] ]
+             → Rapp [ Γ ⊢[ [ pA ]⇒ B ] ]
+                    [ [ pΓ ]⊢ A & Γ ⊢[ pA ] ]
                     [ [ pΓ ]⊢ B ]
 
-  fun-arg∙ : ∀ {pᴬ : Ty[ A ]} {pΓB : Γ [⊢] B}
-             → Rapp [ Γ ⊢[ [ pᴬ ]⇒ B ] & p·F pΓB ]
-                    [ Γ ⊢[ pᴬ ] ]
+  fun-arg∙ : ∀ {pA : Ty[ A ]} {pΓB : Γ [⊢] B}
+             → Rapp [ Γ ⊢[ [ pA ]⇒ B ] & p·F pΓB ]
+                    [ Γ ⊢[ pA ] ]
                     [ pΓB ]
 
-  fun-arg : ∀ {C} {pᴬ : Ty[ A ]}
+  fun-arg : ∀ {C} {pA : Ty[ A ]}
               {x  : Γ ∋ C} {pC : Ty[ C ]} {pΓ : Ctx[ x · pC ]}
               {pΓB : Γ [⊢] B}
-            → Rapp [ Γ ⊢[ [ pᴬ ]⇒ B ] & p·F pΓB ]
-                   [ [ pΓ ]⊢ A        & Γ ⊢[ pᴬ ] ]
+            → Rapp [ Γ ⊢[ [ pA ]⇒ B ] & p·F pΓB ]
+                   [ [ pΓ ]⊢ A        & Γ ⊢[ pA ] ]
                    [ [ pΓ ]⊢ B        & pΓB ]
 
-  arg-fun : ∀ {C} {pᴬ : Ty[ A ]}
+  arg-fun : ∀ {C} {pA : Ty[ A ]}
               {x  : Γ ∋ C} {pC : Ty[ C ]} {pΓ : Ctx[ x · pC ]}
               {pΓB : Γ [⊢] B}
-            → Rapp [ Γ ⊢[ [ pᴬ ]⇒ B ] & p·F pΓB ]
-                   [ [ pΓ ]⊢ A        & Γ ⊢[ pᴬ ] ]
+            → Rapp [ Γ ⊢[ [ pA ]⇒ B ] & p·F pΓB ]
+                   [ [ pΓ ]⊢ A        & Γ ⊢[ pA ] ]
                    [ [ pΓ ]⊢ B        ⅋ pΓB ]
 
   fun : ∀ {pΓB : Γ [⊢]2 B}
@@ -330,8 +330,8 @@ data Slice : ∀ {Γ : Ctx} {A : Ty} (M : Γ ⊢ A) → Γ [⊢]2 A → ★ wher
   [] : ∀ {Γ A} {M : Γ ⊢ A}
        → Slice M []
 
-  V : ∀ {Γ A} {x : Γ ∋ A} {pᴬ : Ty[ A ]} (pΓ : Ctx[ x · pᴬ ]) {p2}
-      → p2 ≈ [ _ ⊢[ pᴬ ] & [ pΓ ]⊢ _ ]
+  V : ∀ {Γ A} {x : Γ ∋ A} {pA : Ty[ A ]} (pΓ : Ctx[ x · pA ]) {p2}
+      → p2 ≈ [ _ ⊢[ pA ] & [ pΓ ]⊢ _ ]
       → Slice (V x) p2
 
   ƛ : ∀ {Γ A B} {M : Γ , A ⊢ B} p2 {{p2ok : Ok2 p2}}
@@ -407,6 +407,10 @@ f $™ (V x)   = V (f x)
 f $™ (M · N) = f $™ M · f $™ N
 f $™ (ƛ M)   = ƛ (ext⇉ f $™ M)
 
+module _ {Γ} A {B} where
+  wk : Γ ⊢ B → Γ , A ⊢ B
+  wk = _$™_ (pop A)
+
 infix 0 _⇶_
 _⇶_ : (Γ Δ : Ctx) → ★
 Γ ⇶ Δ = ∀ {B} → Γ ∋ B → Δ ⊢ B
@@ -470,6 +474,78 @@ p₀ex₀ = ƛ _ (ƛ _ (app fun (app fun-arg (V _ refl) (V _ sym)) []))
 p₁ex₀ : Slice ex₀ [ _ ⊢[ _ ⇒[ [ [] ]⇒ _ ] ] & _ ⊢[ [ _ ⇒[ [ [] ]⇒ _ ] ]⇒ _ ] ]
 p₁ex₀ = ƛ _ (ƛ _ (app fun-arg (app fun (V _ refl) []) (V _ sym)))
 
+_$Ctx_ : ∀ {Γ Δ A} (f : Γ ⇉ Δ) {x : Γ ∋ A} {pA : Ty[ A ]} → Ctx[ x · pA ] → Ctx[ f x · pA ]
+f $Ctx [ pΓ ],- = (f ∘ pop _) $Ctx pΓ
+f $Ctx -,[ pA ] = {!-,[ ? ]!}
+
+module _ {Γ Δ A B} (f : Γ [⊢] A → Δ [⊢] B) where
+  ap[⊢]2 : Γ [⊢]2 A → Δ [⊢]2 B
+  ap[⊢]2 []        = []
+  ap[⊢]2 [ p ]     = [ f p ]
+  ap[⊢]2 [ p & q ] = [ f p & f q ]
+
+  {-
+--module _ {Γ Δ A} (fΓ : ∀ {Γ A} {x : Γ ∋ A} {pA : Ty[ A ]} → Ctx[ x · pA ] → Ctx[ pop A x · pA ]) where
+module _ {Γ Δ A} (fΓ : ∀ {Γ A} {x : Γ ∋ A} {pA : Ty[ A ]} → Ctx[ x · pA ] → Ctx[ pop A x · pA ]) where
+  ap[⊢] : Γ [⊢] A → Δ [⊢] A
+  ap[⊢] [ pΓ ]⊢- = [ {!fΓ pΓ!} ]⊢-
+  ap[⊢] -⊢[ pC ] = -⊢[ pC ]
+
+module _ {Γ Δ A} (f : Γ ⇉ Δ) where
+  _$[⊢]_ : Γ [⊢] A → Δ [⊢] A
+  _$[⊢]_ [ pΓ ]⊢- = [ {!_$Ctx_ pΓ!} ]⊢-
+  _$[⊢]_ -⊢[ pC ] = -⊢[ pC ]
+
+  _$[⊢]2_ : Γ [⊢]2 A → Δ [⊢]2 A
+  _$[⊢]2_ = ap[⊢]2 _$[⊢]_
+-}
+
+module _ {Γ} A {B} where
+  wk[⊢] : Γ [⊢] B → Γ , A [⊢] B
+  wk[⊢] [ pΓ ]⊢- = [ [ pΓ ],- ]⊢-
+  wk[⊢] -⊢[ pC ] = -⊢[ pC ]
+
+  wk[⊢]2 : Γ [⊢]2 B → Γ , A [⊢]2 B
+  wk[⊢]2 = ap[⊢]2 wk[⊢]
+
+wk[⊢]-p·F : ∀ {Γ A B} C (p : Γ [⊢] B) → wk[⊢] C (p·F {A = A} p) ≡ p·F (wk[⊢] C p)
+wk[⊢]-p·F _ [ pΓ ]⊢- = ≡.refl
+wk[⊢]-p·F _ -⊢[ pC ] = ≡.refl
+
+wk[⊢]2-p·F2 : ∀ {Γ A B} C (p : Γ [⊢]2 B) → wk[⊢]2 C (p·F2 {A = A} p) ≡ p·F2 (wk[⊢]2 C p)
+wk[⊢]2-p·F2 _ [] = ≡.refl
+wk[⊢]2-p·F2 C [ p ] = ap [_] $ wk[⊢]-p·F C p
+wk[⊢]2-p·F2 C [ p & q ] = ≡.cong₂ [_&_] (wk[⊢]-p·F C p) (wk[⊢]-p·F C q)
+
+wk-Rapp : ∀ {Γ A B C}
+            {pΓAB : Γ [⊢]2 A ⇒ B}
+            {pΓA  : Γ [⊢]2 A}
+            {pΓB  : Γ [⊢]2 B}
+          → Rapp pΓAB pΓA pΓB
+          → Rapp (wk[⊢]2 C pΓAB) (wk[⊢]2 C pΓA) (wk[⊢]2 C pΓB)
+wk-Rapp arg-fun∙ = arg-fun∙
+wk-Rapp fun-arg∙ = {!fun-arg∙!}
+wk-Rapp fun-arg = {!wk[⊢]2-p·F2 !}
+wk-Rapp {A = A} {C = C} (arg-fun {pΓ = pΓ} {pΓB})
+  rewrite wk[⊢]-p·F {A = A} C pΓB = arg-fun {pΓ = [ pΓ ],- } {wk[⊢] C pΓB}
+
+--{pΓB = pΓB} arg-fun = {!wk[⊢]-p·F!}
+--wk-Rapp {A = A} {C = C} {pΓB = pΓB} arg-fun = {!wk[⊢]-p·F!}
+wk-Rapp {A = A} {C = C} {pΓB = pΓB} fun rewrite wk[⊢]2-p·F2 {_} {A} {_} C pΓB = fun
+wk-Rapp arg = arg
+
+wk-slice : ∀ {Γ A B} {M : Γ ⊢ B} {p2 : Γ [⊢]2 B} → Slice M p2 → Slice (wk A M) (wk[⊢]2 A p2)
+wk-slice [] = []
+wk-slice (V pΓ refl) = V [ pΓ ],- refl
+wk-slice (V pΓ sym) = V [ pΓ ],- sym
+wk-slice (ƛ ._ {{p2ok}} P) = Slice.ƛ _ {{{!!}}} {!wk-slice P!}
+wk-slice (app r P P₁) = app {!r!} (wk-slice P) (wk-slice P₁)
+
+  {-
+module _ {Γ Δ A} (M : Γ ⊢ A) (f : Γ ⇉ Δ) (p2 : Γ [⊢]2 A) where
+  $™-slice : Slice M p2 → Slice (f $™ M) {!!}
+  $™-slice P = {!!}
+
 {-
 data Unie {Γ A} : (p₀ p₁ q₀ q₁ : Γ [⊢] A) → ★ where
   id : ∀ {p q} → Unie p q p q
@@ -498,10 +574,10 @@ module _ {Γ A B} where
 
     {-
     pƛ↓-inj : ∀ {p q : Γ , A [⊢] B} → pƛ↓ p ≡ pƛ↓ q → p ≡ q
-    pƛ↓-inj {p} {q} pf = !(pƛ↑pƛ↓ p) ∙ ap (λ x → pƛ↑ x ({!!})) pf ∙ pƛ↑pƛ↓ q
+    pƛ↓-inj {p} {q} pf = !(pƛ↑pƛ↓ p) ∙ {!ap (λ x → pƛ↑ x ({!!})) pf!} ∙ pƛ↑pƛ↓ q
     -}
 
-uniCtx : ∀ {Γ A} (x : Γ ∋ A) {pᴬ : Ty[ A ]} → (pΓ pΓ' : Ctx[ x · pᴬ ]) → pΓ ≡ pΓ'
+uniCtx : ∀ {Γ A} (x : Γ ∋ A) {pA : Ty[ A ]} → (pΓ pΓ' : Ctx[ x · pA ]) → pΓ ≡ pΓ'
 uniCtx (top _) -,[ ._ ] -,[ _ ] = ≡.refl
 uniCtx (pop _ x) [ pΓ ],- [ pΓ' ],- rewrite uniCtx x pΓ pΓ' = ≡.refl
 

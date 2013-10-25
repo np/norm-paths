@@ -6,9 +6,10 @@ open import Data.Product renaming (_,_ to _,,_)
 open import Data.Sum renaming ([_,_] to [[_,_]])
 open import Data.Zero
 open import Data.One
+open import Data.Two
 
-import Relation.Binary.PropositionalEquality as ≡
-open ≡ using (_≡_; _≢_)
+import Relation.Binary.PropositionalEquality.NP as ≡
+open ≡ using (_≡_; _≢_; _≗_; _∙_; ap; !)
 
 infix 0 _∋_ _⊢_ _⊢ⁿ_
 infixl 6 _·_ _,_
@@ -77,8 +78,8 @@ data _⊢ˢ_↝_ : Ctx → Ty → Ty → ★
 
 data _⊢ˢ_↝_ where
 
-  [] : ∀ {Γ A}
-      → Γ ⊢ˢ A ↝ A
+  []  : ∀ {Γ A}
+        → Γ ⊢ˢ A ↝ A
 
   _∷_ : ∀ {Γ A B C}
         → Γ ⊢ⁿ A
@@ -113,8 +114,6 @@ module ⊢ⁿ→⊢ where
 _++ˢ_ : ∀ {Γ A B C} → Γ ⊢ˢ A ↝ B → Γ ⊢ˢ B ↝ C → Γ ⊢ˢ A ↝ C
 []       ++ˢ us = us
 (t ∷ ts) ++ˢ us = t ∷ (ts ++ˢ us)
-
-  --_ : ∀ {Γ A B} → Γ ⊢ⁿ A ⇒ B → Γ ⊢ⁿ A → Γ ⊢ⁿ B
 
 module substⁿ where
     _$ⁿ_ : ∀ {Γ Δ A}   → Γ ⇉ Δ → Γ ⊢ⁿ A → Δ ⊢ⁿ A
@@ -171,397 +170,204 @@ module norm where
   nrm (ƛ t)   = ƛ (nrm t)
   -}
 
--- _⊆_ : Ty → Ty → ★
-
 data Ty[_] : Ty → ★ where
-  ∙     : ∀ {A} → Ty[ A ]
-  [_]⇒_ : ∀ {A} (pᴬ : Ty[ A ]) (B : Ty) → Ty[ A ⇒ B ]
-  _⇒[_] : ∀ {B} (A : Ty) (pᴮ : Ty[ B ]) → Ty[ A ⇒ B ]
+  []    : ∀ {A} → Ty[ A ]
+  [_]⇒- : ∀ {A} (pᴬ : Ty[ A ]) {B : Ty} → Ty[ A ⇒ B ]
+  -⇒[_] : ∀ {B} {A : Ty} (pᴮ : Ty[ B ]) → Ty[ A ⇒ B ]
+
+[_]⇒_ : ∀ {A} (pᴬ : Ty[ A ]) (B : Ty) → Ty[ A ⇒ B ]
+[ p ]⇒ _ = [ p ]⇒- 
+
+_⇒[_] : ∀ {B} (A : Ty) (pᴮ : Ty[ B ]) → Ty[ A ⇒ B ]
+_ ⇒[ p ] = -⇒[ p ]
 
 data Ctx[_·_] : ∀ {Γ A} → Γ ∋ A → (pᴬ : Ty[ A ]) → ★ where
-  [_],_ : ∀ {Γ A} {A∈Γ : Γ ∋ A} {pᴬ : Ty[ A ]} (p : Ctx[ A∈Γ · pᴬ ]) (B : Ty) → Ctx[ pop B A∈Γ · pᴬ ]
-  _,[_] : ∀ (Γ : Ctx) {A : Ty} (pᴬ : Ty[ A ]) → Ctx[ top {Γ} A · pᴬ ]
+  [_],- : ∀ {Γ A} {A∈Γ : Γ ∋ A} {pᴬ : Ty[ A ]} (p : Ctx[ A∈Γ · pᴬ ]) {B : Ty} → Ctx[ pop B A∈Γ · pᴬ ]
+  -,[_] : ∀ {Γ A} (pᴬ : Ty[ A ]) → Ctx[ top {Γ} A · pᴬ ]
+
+[_],_ : ∀ {Γ A} {A∈Γ : Γ ∋ A} {pᴬ : Ty[ A ]} (p : Ctx[ A∈Γ · pᴬ ]) (B : Ty) → Ctx[ pop B A∈Γ · pᴬ ]
+[ p ], _ = [ p ],-
+
+_,[_] : ∀ (Γ : Ctx) {A : Ty} (pᴬ : Ty[ A ]) → Ctx[ top {Γ} A · pᴬ ]
+_ ,[ p ] = -,[ p ]
 
 infix 0 _[⊢]_ _⊢[_] [_]⊢_
 infix 3 [_]⇒_ [_],_ _,[_]
 
 data _[⊢]_ : ∀ Γ C → ★ where
-  [_]⊢_ : ∀ {Γ A} {x : Γ ∋ A} {pᴬ : Ty[ A ]} (p : Ctx[ x · pᴬ ]) (C : Ty) → Γ [⊢] C
-  _⊢[_] : ∀ Γ {C} (pC : Ty[ C ]) → Γ [⊢] C
+  [_]⊢- : ∀ {Γ A} {x : Γ ∋ A} {pᴬ : Ty[ A ]} (p : Ctx[ x · pᴬ ]) {C : Ty} → Γ [⊢] C
+  -⊢[_] : ∀ {Γ C} (pC : Ty[ C ]) → Γ [⊢] C
+
+[_]⊢_ : ∀ {Γ A} {x : Γ ∋ A} {pᴬ : Ty[ A ]} (p : Ctx[ x · pᴬ ]) (C : Ty) → Γ [⊢] C
+[ p ]⊢ _ = [ p ]⊢-
+
+_⊢[_] : ∀ Γ {C} (pC : Ty[ C ]) → Γ [⊢] C
+_ ⊢[ p ] = -⊢[ p ]
 
 infix 0 _[⊢]2_
 data _[⊢]2_ (Γ : Ctx) (A : Ty) : ★ where
-  [_]   : (p : Γ [⊢] A) → Γ [⊢]2 A
-  [_&_] : ∀ (p q : Γ [⊢] A) → Γ [⊢]2 A
-
-[_⅋_] : ∀ {Γ A} (p q : Γ [⊢] A) → Γ [⊢]2 A
-[ p ⅋ q ] = [ q & p ]
-
-module _ {Γ A B} where
-    p·F : Γ [⊢] B → Γ [⊢] A ⇒ B
-    p·F ([ pΓ ]⊢ ._) = [ pΓ ]⊢ _ ⇒ _
-    p·F (._ ⊢[ pB ]) = _ ⊢[ _ ⇒[ pB ] ]
-
-    p·F2 : Γ [⊢]2 B → Γ [⊢]2 A ⇒ B
-    p·F2 [ p ]     = [ p·F p ]
-    p·F2 [ p & q ] = [ p·F p & p·F q ]
+  []    : Γ [⊢]2 A
+  [_]   : (p   : Γ [⊢] A) → Γ [⊢]2 A
+  [_&_] : (p q : Γ [⊢] A) → Γ [⊢]2 A
 
 module _ {Γ A} where
     swp2 : Γ [⊢]2 A → Γ [⊢]2 A
-    swp2 [ p ] = [ p ]
+    swp2 []        = []
+    swp2 [ p ]     = [ p ]
     swp2 [ p & q ] = [ q & p ]
 
-pƛ↓ : ∀ {Γ A B} →
-        Γ , A [⊢] B →
-        Γ [⊢] A ⇒ B
-pƛ↓ ([ [ pΓ ], _ ]⊢ _) = [ pΓ ]⊢ _ ⇒ _
-pƛ↓ ([ _ ,[ pA ] ]⊢ _) = _ ⊢[ [ pA ]⇒ _ ]
-pƛ↓ (._ ⊢[ pB ])       = _ ⊢[ _ ⇒[ pB ] ]
-
-Ok : ∀ {Γ A B} → Γ [⊢] A ⇒ B → ★
-Ok {Γ} {A} {B} ([ p ]⊢ .(A ⇒ B)) = 𝟙
-Ok {Γ} (.Γ ⊢[ ∙ ]) = 𝟘
-Ok {Γ} {A} {B} (.Γ ⊢[ [ pC ]⇒ .B ]) = 𝟙
-Ok {Γ} {A} (.Γ ⊢[ .A ⇒[ pC ] ]) = 𝟙
+    [_⅋_] : (p q : Γ [⊢] A) → Γ [⊢]2 A
+    [ p ⅋ q ] = [ q & p ]
 
 module _ {Γ A B} where
+    p·F : Γ [⊢] B → Γ [⊢] A ⇒ B
+    p·F [ pΓ ]⊢- = [ pΓ ]⊢ _ ⇒ _
+    p·F -⊢[ pB ] = _ ⊢[ _ ⇒[ pB ] ]
+
+    p·F2 : Γ [⊢]2 B → Γ [⊢]2 A ⇒ B
+    p·F2 []        = []
+    p·F2 [ p ]     = [ p·F p ]
+    p·F2 [ p & q ] = [ p·F p & p·F q ]
+
+    pƛ↓ : Γ , A [⊢] B → Γ [⊢] A ⇒ B
+    pƛ↓ [ [ pΓ ],- ]⊢- = [ pΓ ]⊢ _ ⇒ _
+    pƛ↓ [ -,[ pA ] ]⊢- = _ ⊢[ [ pA ]⇒ _ ]
+    pƛ↓ -⊢[ pB ]       = _ ⊢[ _ ⇒[ pB ] ]
+
+    Ok : Γ [⊢] A ⇒ B → ★
+    Ok -⊢[ [] ]       = 𝟘
+    Ok [ p ]⊢-        = 𝟙
+    Ok -⊢[ [ pC ]⇒- ] = 𝟙
+    Ok -⊢[ -⇒[ pC ] ] = 𝟙
+
     Ok-pƛ↓ : (P : Γ , A [⊢] B) → Ok (pƛ↓ P)
-    Ok-pƛ↓ ([ [ _ ], ._ ]⊢ ._)  = _
-    Ok-pƛ↓ ([ ._ ,[ ._ ] ]⊢ ._) = _
-    Ok-pƛ↓ (._ ⊢[ _ ])          = _
+    Ok-pƛ↓ [ [ _ ],- ]⊢- = _
+    Ok-pƛ↓ [ -,[ _ ] ]⊢- = _
+    Ok-pƛ↓ -⊢[ _ ]       = _
+    {-
     module Ok-pƛ↓ where
       Ok-pƛ↓' : ∀ {P} → Ok (pƛ↓ P)
       Ok-pƛ↓' {P} = Ok-pƛ↓ P
+    -}
 
-pƛ↑ : ∀ {Γ A B} →
-        (p : Γ [⊢] A ⇒ B) →
-        (ok : Ok p) →
-        Γ , A [⊢] B
-pƛ↑ ([ pΓ ]⊢ ._) _ = [ [ pΓ ], _ ]⊢ _
-pƛ↑ (_ ⊢[ [ pA ]⇒ ._ ]) _ = [ _ ,[ pA ] ]⊢ _
-pƛ↑ (_ ⊢[ ._ ⇒[ pB ] ]) _ = _ , _ ⊢[ pB ]
-pƛ↑ (_ ⊢[ ∙ ]) ()
+    pƛ↑ : (p : Γ [⊢] A ⇒ B) →
+          (ok : Ok p) →
+          Γ , A [⊢] B
+    pƛ↑ [ pΓ ]⊢- _ = [ [ pΓ ], _ ]⊢ _
+    pƛ↑ -⊢[ [ pA ]⇒- ] _ = [ _ ,[ pA ] ]⊢ _
+    pƛ↑ -⊢[ -⇒[ pB ] ] _ = _ , _ ⊢[ pB ]
+    pƛ↑ -⊢[ [] ] ()
 
-pƛ↑pƛ↓ : ∀ {Γ A B} (p : Γ , A [⊢] B) → pƛ↑ (pƛ↓ p) (Ok-pƛ↓ p) ≡ p
-pƛ↑pƛ↓ {Γ} {A} {B} ([ [ p ], .A ]⊢ .B) = ≡.refl
-pƛ↑pƛ↓ {Γ} {.A} {B} ([_]⊢_ {.(Γ , A)} {A} {.(top A)} {pᴬ} (.Γ ,[ .pᴬ ]) .B) = ≡.refl
-pƛ↑pƛ↓ {Γ} {A} (.(Γ , A) ⊢[ pC ]) = ≡.refl
+    pƛ↑pƛ↓ : (p : Γ , A [⊢] B) → pƛ↑ (pƛ↓ p) (Ok-pƛ↓ p) ≡ p
+    pƛ↑pƛ↓   [ [ _ ],- ]⊢- = ≡.refl
+    pƛ↑pƛ↓   [ -,[ _ ] ]⊢- = ≡.refl
+    pƛ↑pƛ↓ -⊢[ _       ]   = ≡.refl
 
-{-
-pƛ↑pƛ : ∀ {Γ A B} (p : Γ [⊢] A ⇒ B) → pƛ↑ (pƛ↓ p) ≡ p
-pƛ↑pƛ p = ?
--}
+    pƛ↓pƛ↑ : (p : Γ [⊢] A ⇒ B) {{ok-p : Ok p}} → pƛ↓ (pƛ↑ p ok-p) ≡ p
+    pƛ↓pƛ↑ [ p ]⊢-        {{_}} = ≡.refl
+    pƛ↓pƛ↑ -⊢[ [ pC ]⇒- ] {{_}} = ≡.refl
+    pƛ↓pƛ↑ -⊢[ -⇒[ pC ] ] {{_}} = ≡.refl
+    pƛ↓pƛ↑ -⊢[ [] ]       {{()}}
 
-Ok2 : ∀ {Γ A B} → Γ [⊢]2 A ⇒ B → ★
-Ok2 [ p ]     = Ok p
-Ok2 [ p & q ] = Ok p × Ok q
+    Ok2 : Γ [⊢]2 A ⇒ B → ★
+    Ok2 []        = 𝟙
+    Ok2 [ p ]     = Ok p
+    Ok2 [ p & q ] = Ok p × Ok q
 
-pƛ2↑ : ∀ {Γ A B} →
-         (p : Γ [⊢]2 A ⇒ B) →
-         (ok : Ok2 p) →
-         Γ , A [⊢]2 B
-pƛ2↑ [ p ]     o          = [ pƛ↑ p o ]
-pƛ2↑ [ p & q ] (op ,, oq) = [ pƛ↑ p op & pƛ↑ q oq ]
+    pƛ2↑ : (p : Γ [⊢]2 A ⇒ B) →
+           (ok : Ok2 p) →
+           Γ , A [⊢]2 B
+    pƛ2↑ []        o          = []
+    pƛ2↑ [ p ]     o          = [ pƛ↑ p o ]
+    pƛ2↑ [ p & q ] (op ,, oq) = [ pƛ↑ p op & pƛ↑ q oq ]
 
-{-
-data R·F : ∀ {Γ A B}
-          (pΓAB₀ : Γ [⊢] A ⇒ B) (pΓAB₁ : Γ [⊢] A ⇒ B)
-          (pΓB₀ : Γ [⊢] B) (pΓB₁ : Γ [⊢] B)
-          → ★ where
+data Rapp {Γ A B} : (pΓAB : Γ [⊢]2 A ⇒ B)
+                    (pΓA  : Γ [⊢]2 A)
+                    (pΓB  : Γ [⊢]2 B)
+                  → ★ where
 
-  ·[B&B] : ∀ {Γ A B}
-              {pᴮ↑ : Ty[ B ]} {pᴮ↓ : Ty[ B ]}
-            → R·F (Γ ⊢[ A ⇒[ pᴮ↑ ] ]) (_ ⊢[ _ ⇒[ pᴮ↓ ] ])
-                  (_ ⊢[ pᴮ↑ ])        (_ ⊢[ pᴮ↓ ])
+  arg-fun∙ : ∀ {C} {pᴬ : Ty[ A ]}
+               {x  : Γ ∋ C} {pC : Ty[ C ]} {pΓ : Ctx[ x · pC ]}
+             → Rapp [ Γ ⊢[ [ pᴬ ]⇒ B ] ]
+                    [ [ pΓ ]⊢ A & Γ ⊢[ pᴬ ] ]
+                    [ [ pΓ ]⊢ B ]
 
-  ·[Γ&Γ] : ∀ {Γ A B C D}
-           {x : Γ ∋ C} {pC↑ : Ty[ C ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-           {y : Γ ∋ D} {pD↓ : Ty[ D ]} {pΓ↓ : Ctx[ y · pD↓ ]}
-         → R·F ([ pΓ↑ ]⊢ A ⇒ B) ([ pΓ↓ ]⊢ A ⇒ B)
-               ([ pΓ↑ ]⊢ B)     ([ pΓ↓ ]⊢ B)
+  fun-arg∙ : ∀ {pᴬ : Ty[ A ]} {pΓB : Γ [⊢] B}
+             → Rapp [ Γ ⊢[ [ pᴬ ]⇒ B ] & p·F pΓB ]
+                    [ Γ ⊢[ pᴬ ] ]
+                    [ pΓB ]
 
-  ·[Γ&B] : ∀ {Γ A B C}
-              {pᴮ↓ : Ty[ B ]}
-              {x : Γ ∋ C} {pC↑ : Ty[ C ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-            → R·F ([ pΓ↑ ]⊢ A ⇒ B) (Γ ⊢[ A ⇒[ pᴮ↓ ] ])
-                  ([ pΓ↑ ]⊢ B)     (Γ ⊢[ pᴮ↓ ])
-
-            {-
-  -- swp _·[Γ&B]
-  _·[Γ⅋B] : ∀ {Γ A B C} {M : Γ ⊢ A ⇒ B} {N : Γ ⊢ A}
-              {pᴮ↓ : Ty[ B ]}
-              {x : Γ ∋ C} {pC↑ : Ty[ C ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-            → Slice M       [ [ pΓ↑ ]⊢ A ⇒ B ⅋ Γ ⊢[ A ⇒[ pᴮ↓ ] ] ]
-            → Slice (M · N) [ [ pΓ↑ ]⊢ B     ⅋ Γ ⊢[ pᴮ↓ ]        ]
-            -}
-
-            {-
-  _·[B⅋B] : ∀ {Γ A B} {M : Γ ⊢ A ⇒ B} {N : Γ ⊢ A}
-              {pᴮ↑ : Ty[ B ]} {pᴮ↓ : Ty[ B ]}
-            → Slice M       [ _ ⊢[ _ ⇒[ pᴮ↑ ] ] ⅋ _ ⊢[ _ ⇒[ pᴮ↓ ] ] ]
-            → Slice (M · N) [ _ ⊢[ pᴮ↑ ]        ⅋ _ ⊢[ pᴮ↓ ] ]
-            -}
--}
-
-data R·AF : ∀ {Γ A B}
-              (pΓAB : Γ [⊢]2 A ⇒ B)
-              (pΓA  : Γ [⊢]2 A)
-              (pΓB  : Γ [⊢]2 B)
-            → ★ where
-
-  ·A[Γ&∙] : ∀ {Γ A B C} {pᴬ : Ty[ A ]}
+  fun-arg : ∀ {C} {pᴬ : Ty[ A ]}
               {x  : Γ ∋ C} {pC : Ty[ C ]} {pΓ : Ctx[ x · pC ]}
-            → R·AF [ Γ ⊢[ [ pᴬ ]⇒ B ] ]
-                   [ [ pΓ ]⊢ A & Γ ⊢[ pᴬ ] ]
-                   [ [ pΓ ]⊢ B ]
+              {pΓB : Γ [⊢] B}
+            → Rapp [ Γ ⊢[ [ pᴬ ]⇒ B ] & p·F pΓB ]
+                   [ [ pΓ ]⊢ A        & Γ ⊢[ pᴬ ] ]
+                   [ [ pΓ ]⊢ B        & pΓB ]
 
-  ·A[∙&] : ∀ {Γ A B} {pᴬ : Ty[ A ]} {pΓB : Γ [⊢] B}
-           → R·AF [ Γ ⊢[ [ pᴬ ]⇒ B ] & p·F pΓB ]
-                  [ Γ ⊢[ pᴬ ] ]
-                  [ pΓB ]
+  arg-fun : ∀ {C} {pᴬ : Ty[ A ]}
+              {x  : Γ ∋ C} {pC : Ty[ C ]} {pΓ : Ctx[ x · pC ]}
+              {pΓB : Γ [⊢] B}
+            → Rapp [ Γ ⊢[ [ pᴬ ]⇒ B ] & p·F pΓB ]
+                   [ [ pΓ ]⊢ A        & Γ ⊢[ pᴬ ] ]
+                   [ [ pΓ ]⊢ B        ⅋ pΓB ]
 
-  ·A[Γ&] : ∀ {Γ A B C} {pᴬ : Ty[ A ]}
-             {x  : Γ ∋ C} {pC : Ty[ C ]} {pΓ : Ctx[ x · pC ]}
-             {pΓB : Γ [⊢] B}
-           → R·AF [ Γ ⊢[ [ pᴬ ]⇒ B ] & p·F pΓB ]
-                  [ [ pΓ ]⊢ A        & Γ ⊢[ pᴬ ] ]
-                  [ [ pΓ ]⊢ B        & pΓB ]
+  fun : ∀ {pΓB : Γ [⊢]2 B}
+        → Rapp (p·F2 pΓB)
+               []
+               pΓB
 
-  ·A[Γ⅋] : ∀ {Γ A B C} {pᴬ : Ty[ A ]}
-             {x  : Γ ∋ C} {pC : Ty[ C ]} {pΓ : Ctx[ x · pC ]}
-             {pΓB : Γ [⊢] B}
-           → R·AF [ Γ ⊢[ [ pᴬ ]⇒ B ] & p·F pΓB ]
-                  [ [ pΓ ]⊢ A        & Γ ⊢[ pᴬ ] ]
-                  [ [ pΓ ]⊢ B        ⅋ pΓB ]
-
-{-
-  ·A[Γ&Γ] : ∀ {Γ A B C D}
-             {pᴬ  : Ty[ A ]}
-             {x : Γ ∋ C} {pC↑ : Ty[ C ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-             {y : Γ ∋ D} {pD↓ : Ty[ D ]} {pΓ↓ : Ctx[ y · pD↓ ]}
-           → R·AF [ Γ ⊢[ [ pᴬ ]⇒ B ] & [ pΓ↓ ]⊢ A ⇒ B ]
-                  [ [ pΓ↑ ]⊢ A       & Γ ⊢[ pᴬ ] ]
-                  [ [ pΓ↑ ]⊢ B       & [ pΓ↓ ]⊢ B ]
--}
-
-                  {- subsumed by ·A[∙&]
-  ·A[∙&B] : ∀ {Γ A B C}
-             {pᴬ : Ty[ A ]}
-             {pᴮ : Ty[ B ]}
-             {x  : Γ ∋ C} {pC : Ty[ C ]} {pΓ : Ctx[ x · pC ]}
-           → R·AF [ Γ ⊢[ [ pᴬ ]⇒ B ] & Γ ⊢[ A ⇒[ pᴮ ] ] ]
-                  [ Γ ⊢[ pᴬ ] ]
-                  [ Γ ⊢[ pᴮ ] ]
-
-                   subsumed by ·A[∙&]
-  ·A[∙&Γ] : ∀ {Γ A B C D}
-             {pᴬ  : Ty[ A ]}
-             {x : Γ ∋ C} {pC↑ : Ty[ C ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-             {y : Γ ∋ D} {pD↓ : Ty[ D ]} {pΓ↓ : Ctx[ y · pD↓ ]}
-           → R·AF [ Γ ⊢[ [ pᴬ ]⇒ B ] & [ pΓ↓ ]⊢ A ⇒ B ]
-                  [ Γ ⊢[ pᴬ ] ]
-                  [ [ pΓ↓ ]⊢ B ]
-                  -}
-
-           {-
-  -- swp _·A[Γ&Γ]_
-  _·A[Γ⅋Γ]_ : ∀ {Γ A B C D} {M : Γ ⊢ A ⇒ B} {N : Γ ⊢ A}
-             {pᴬ  : Ty[ A ]}
-             {x : Γ ∋ C} {pC↑ : Ty[ C ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-             {y : Γ ∋ D} {pD↓ : Ty[ D ]} {pΓ↓ : Ctx[ y · pD↓ ]}
-           → Slice M       [ Γ ⊢[ [ pᴬ ]⇒ B ] ⅋ [ pΓ↓ ]⊢ A ⇒ B ]
-           → Slice N       [ [ pΓ↑ ]⊢ A       ⅋ Γ ⊢[ pᴬ ]  ]
-           → Slice (M · N) [ [ pΓ↑ ]⊢ B       ⅋ [ pΓ↓ ]⊢ B ]
-           -}
+  arg : ∀ {C} {x : Γ ∋ C} {pC↑ : Ty[ C ]} {pΓ↑ : Ctx[ x · pC↑ ]}
+          {D} {y : Γ ∋ D} {pD↓ : Ty[ D ]} {pΓ↓ : Ctx[ y · pD↓ ]}
+        → Rapp []
+               [ [ pΓ↑ ]⊢ A & [ pΓ↓ ]⊢ A ]
+               [ [ pΓ↑ ]⊢ B & [ pΓ↓ ]⊢ B ]
 
 data _≈_ {Γ A} : (p2 q2 : Γ [⊢]2 A) → ★ where
   refl : ∀ {p2 : Γ [⊢]2 A} → p2 ≈ p2
   sym  : ∀ {p q : Γ [⊢] A} → [ p & q ] ≈ [ q & p ]
 
 data Slice : ∀ {Γ : Ctx} {A : Ty} (M : Γ ⊢ A) → Γ [⊢]2 A → ★ where
-  -- V[Γ] : ∀ {Γ A B} {x : Γ ∋ A} {y : Γ ∋ B} {pᴮ↑ : Ty[ B ⁻]} (x≠y : x ≠ y) → (pΓ↑ : Ctx[ y · pᴮ↑ ]) → Slice (V x) [ [ pΓ↑ ]⊢ ⁺]
+  [] : ∀ {Γ A} {M : Γ ⊢ A}
+       → Slice M []
 
- -- V {-[Γ&A]-} : ∀ {Γ A} {x : Γ ∋ A} {pᴬ : Ty[ A ]} (pΓ : Ctx[ x · pᴬ ]) → Slice (V x) [ [ pΓ ]⊢ A & _ ⊢[ pᴬ ] ]
- -- Vswp        : ∀ {Γ A} {x : Γ ∋ A} {pᴬ : Ty[ A ]} (pΓ : Ctx[ x · pᴬ ]) {p q}  → Slice (V x) [ _ ⊢[ pᴬ ] & [ pΓ ]⊢ _ ]
-  V : ∀ {Γ A} {x : Γ ∋ A} {pᴬ : Ty[ A ]} (pΓ : Ctx[ x · pᴬ ]) {p2} → p2 ≈ [ _ ⊢[ pᴬ ] & [ pΓ ]⊢ _ ] → Slice (V x) p2
-
-  -- swp V[Γ&A]
-  {-
-  V[Γ⅋A] : ∀ {Γ A} {x : Γ ∋ A} {pᴬ : Ty[ A ⁻]} (pΓ : Ctx[ x · pᴬ ]) → Slice (V x) [ [ pΓ ]⊢ _ ⅋ _ ⊢[ pᴬ ]  ]
-  -}
-
-  {-
-  ƛ[A] : ∀ {Γ A B} {M : Γ , A ⊢ B} {pᴬ↑ : Ty[ A ]}
-         → Slice M     [ [ Γ ,[ pᴬ↑ ] ]⊢ B ]
-         → Slice (ƛ M) [ Γ ⊢[ [ pᴬ↑ ]⇒ B ] ]
-         
-  ƛ[B] : ∀ {Γ A B} {M : Γ , A ⊢ B}
-           {pᴮ↑ : Ty[ B ]}
-         → Slice M     [ Γ , A ⊢[ pᴮ↑ ]    ]
-         → Slice (ƛ M) [ Γ ⊢[ A ⇒[ pᴮ↑ ] ] ]
-
-  ƛ[Γ] : ∀ {Γ A B C} {M : Γ , A ⊢ B}
-           {x : Γ ∋ C} {pC↑ : Ty[ C ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-         → Slice M     [ [ [ pΓ↑ ], A ]⊢ B ]
-         → Slice (ƛ M) [ [ pΓ↑ ]⊢ A ⇒ B    ]
-  -}
+  V : ∀ {Γ A} {x : Γ ∋ A} {pᴬ : Ty[ A ]} (pΓ : Ctx[ x · pᴬ ]) {p2}
+      → p2 ≈ [ _ ⊢[ pᴬ ] & [ pΓ ]⊢ _ ]
+      → Slice (V x) p2
 
   ƛ : ∀ {Γ A B} {M : Γ , A ⊢ B} p2 {{p2ok : Ok2 p2}}
       → Slice M     (pƛ2↑ p2 p2ok)
       → Slice (ƛ M) p2
 
-  {-
-  ƛ : ∀ {Γ A B} {M : Γ , A ⊢ B} {p₀ p₁} {{p₀ok : Ok p₀}} {{p₁ok : Ok p₁}}
-      → Slice M     [ pƛ↑ p₀ & pƛ↑ p₁ ]
-      → Slice (ƛ M) [ p₀     & p₁     ]
-  -}
-
-      {-
-  ƛ : ∀ {Γ A B} {M : Γ , A ⊢ B} {s p₀ p₁ p₀' p₁'}
-      → Rƛ p₀ p₀'
-      → Rƛ p₁ p₁'
-      → Slice M     ^ _ [ p₀  & p₁  ]
-      → Slice (ƛ M) ^ s [ p₀' & p₁' ]
-      -}
-
-      {-
-  ƛ[A&A] : ∀ {Γ A B} {M : Γ , A ⊢ B} {s}
-             {pᴬ↑ : Ty[ A ]} {pᴬ↓ : Ty[ A ]}
-           → Slice M     ^ _ [ [ Γ ,[ pᴬ↑ ] ]⊢ B & [ Γ ,[ pᴬ↓ ] ]⊢ B ]
-           → Slice (ƛ M) ^ s [ Γ ⊢[ [ pᴬ↑ ]⇒ B ] & Γ ⊢[ [ pᴬ↓ ]⇒ B ] ]
-
-           {-
-  -- swp ƛ[A&A]
-  ƛ[A⅋A] : ∀ {Γ A B} {M : Γ , A ⊢ B}
-             {pᴬ↑ : Ty[ A ⁻]} {pᴬ↓ : Ty[ A ⁺]}
-           → Slice M     [ [ Γ ,[ pᴬ↑ ] ]⊢ B ⅋ [ Γ ,[ pᴬ↓ ] ]⊢ B ]
-           → Slice (ƛ M) [ Γ ⊢[ [ pᴬ↑ ]⇒ B ] ⅋ Γ ⊢[ [ pᴬ↓ ]⇒ B ] ]
-           -}
-
-  ƛ[A&B] : ∀ {Γ A B} {M : Γ , A ⊢ B} {s}
-             {pᴬ : Ty[ A ]} {pᴮ : Ty[ B ]}
-           → Slice M     ^ _ [ [ Γ ,[ pᴬ ] ]⊢ B & Γ , A ⊢[ pᴮ ]    ]
-           → Slice (ƛ M) ^ s [ Γ ⊢[ [ pᴬ ]⇒ B ] & Γ ⊢[ A ⇒[ pᴮ ] ] ]
-
-           {-
-  -- swp ƛ[A&B]
-  ƛ[A⅋B] : ∀ {Γ A B} {M : Γ , A ⊢ B}
-             {pᴮ : Ty[ B ⁻]} {pᴬ : Ty[ A ⁻]}
-           → Slice M     [ [ Γ ,[ pᴬ ] ]⊢ B ⅋ Γ , A ⊢[ pᴮ ]    ]
-           → Slice (ƛ M) [ Γ ⊢[ [ pᴬ ]⇒ B ] ⅋ Γ ⊢[ A ⇒[ pᴮ ] ] ]
-           -}
-
-           {-
-           → Slice M     [ Γ , A ⊢[ pᴮ ]    & [ Γ ,[ pᴬ ] ]⊢ B   ]
-           → Slice (ƛ M) [ Γ ⊢[ A ⇒[ pᴮ ] ] & Γ ⊢[ [ pᴬ ]⇒ B ] ]
-           -}
- 
-  ƛ[B&B] : ∀ {Γ A B} {M : Γ , A ⊢ B} {s}
-             {pᴮ↑ : Ty[ B ]} {pᴮ↓ : Ty[ B ]}
-           → Slice M     ^ _ [ Γ , A ⊢[ pᴮ↑ ]    & Γ , A ⊢[ pᴮ↓ ]    ]
-           → Slice (ƛ M) ^ s [ Γ ⊢[ A ⇒[ pᴮ↑ ] ] & Γ ⊢[ A ⇒[ pᴮ↓ ] ] ]
-
-           {-
-  ƛ[B⅋B] : ∀ {Γ A B} {M : Γ , A ⊢ B}
-             {pᴮ↑ : Ty[ B ^ _ ]} {pᴮ↓ : Ty[ B ^ _ ]}
-           → Slice M     [ Γ , A ⊢[ pᴮ↑ ]    ⅋ Γ , A ⊢[ pᴮ↓ ]    ]
-           → Slice (ƛ M) [ Γ ⊢[ A ⇒[ pᴮ↑ ] ] ⅋ Γ ⊢[ A ⇒[ pᴮ↓ ] ] ]
-           -}
-
-  ƛ[Γ&A] : ∀ {Γ A B C} {M : Γ , A ⊢ B} {s}
-             {x : Γ ∋ C} {pC↑ : Ty[ C ^ _ ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-             {pᴬ↓ : Ty[ A ^ _ ]}
-           → Slice M     ^ _ [ [ [ pΓ↑ ], A ]⊢ B & [ Γ ,[ pᴬ↓ ] ]⊢ B ]
-           → Slice (ƛ M) ^ s [ [ pΓ↑ ]⊢ A ⇒ B    & Γ ⊢[ [ pᴬ↓ ]⇒ B ] ]
-
-           {-
-  -- swp ƛ[Γ&A]
-  ƛ[Γ⅋A] : ∀ {Γ A B C} {M : Γ , A ⊢ B}
-             {x : Γ ∋ C} {pC↑ : Ty[ C ^ _ ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-             {pᴬ↓ : Ty[ A ^ _ ]}
-           → Slice M     [ [ [ pΓ↑ ], A ]⊢ B ⅋ [ Γ ,[ pᴬ↓ ] ]⊢ B ]
-           → Slice (ƛ M) [ [ pΓ↑ ]⊢ A ⇒ B    ⅋ Γ ⊢[ [ pᴬ↓ ]⇒ B ] ]
-           -}
-
-  ƛ[Γ&B] : ∀ {Γ A B C} {M : Γ , A ⊢ B} {s}
-             {x : Γ ∋ C} {pC↑ : Ty[ C ^ _ ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-             {pᴮ↓ : Ty[ B ^ _ ]}
-           → Slice M     ^ _ [ [ [ pΓ↑ ], A ]⊢ B & Γ , A ⊢[ pᴮ↓ ]    ]
-           → Slice (ƛ M) ^ s [ [ pΓ↑ ]⊢ A ⇒ B    & Γ ⊢[ A ⇒[ pᴮ↓ ] ] ]
-
-           {-
-  -- swp ƛ[Γ&B]
-  ƛ[Γ⅋B] : ∀ {Γ A B C} {M : Γ , A ⊢ B}
-             {x : Γ ∋ C} {pC↑ : Ty[ C ^ _ ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-             {pᴮ↓ : Ty[ B ]}
-           → Slice M     [ [ [ pΓ↑ ], A ]⊢ B ⅋ Γ , A ⊢[ pᴮ↓ ]    ]
-           → Slice (ƛ M) [ [ pΓ↑ ]⊢ A ⇒ B    ⅋ Γ ⊢[ A ⇒[ pᴮ↓ ] ] ]
-           -}
-
-  ƛ[Γ&Γ] : ∀ {Γ A B C D} {M : Γ , A ⊢ B} {s}
-             {x : Γ ∋ C} {pC↑ : Ty[ C ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-             {y : Γ ∋ D} {pD↓ : Ty[ D ]} {pΓ↓ : Ctx[ y · pD↓ ]}
-           → Slice M     ^ _ [ [ [ pΓ↑ ], A ]⊢ B & [ [ pΓ↓ ], A ]⊢ B ]
-           → Slice (ƛ M) ^ s [ [ pΓ↑ ]⊢ A ⇒ B    & [ pΓ↓ ]⊢ A ⇒ B    ]
-
-           {-
-  ƛ[Γ⅋Γ] : ∀ {Γ A B C D} {M : Γ , A ⊢ B}
-             {x : Γ ∋ C} {pC↑ : Ty[ C ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-             {y : Γ ∋ D} {pD↓ : Ty[ D ]} {pΓ↓ : Ctx[ y · pD↓ ]}
-           → Slice M     [ [ [ pΓ↑ ], A ]⊢ B ⅋ [ [ pΓ↓ ], A ]⊢ B ]
-           → Slice (ƛ M) [ [ pΓ↑ ]⊢ A ⇒ B    ⅋ [ pΓ↓ ]⊢ A ⇒ B    ]
-           -}
-  -}
-
-  ·FA : ∀ {Γ A B} {M : Γ ⊢ A ⇒ B} {N : Γ ⊢ A}
+  app : ∀ {Γ A B} {M : Γ ⊢ A ⇒ B} {N : Γ ⊢ A}
           {pΓAB : Γ [⊢]2 A ⇒ B}
           {pΓA  : Γ [⊢]2 A}
           {pΓB  : Γ [⊢]2 B}
-          (r·AF : R·AF pΓAB pΓA pΓB)
+          (r    : Rapp pΓAB pΓA pΓB)
           (PM   : Slice M pΓAB)
           (PN   : Slice N pΓA)
         → Slice (M · N) pΓB
 
-  ·F : ∀ {Γ A B} {M : Γ ⊢ A ⇒ B} {N : Γ ⊢ A}
-         {pΓB : Γ [⊢]2 B}
-       → Slice M       (p·F2 pΓB)
-       → Slice (M · N) pΓB
+record Path {Γ : Ctx} {A : Ty} (M : Γ ⊢ A) (p : Γ [⊢] A) : ★ where
+  constructor path
+  field
+    endpoint? : Γ [⊢] A → 𝟚
+  Endpoint : Γ [⊢] A → ★
+  Endpoint = ✓ ∘ endpoint?
+  field
+    slices : ∀ q → Endpoint q → Slice M [ p & q ]
+  {-
+    endpoints : List (Γ [⊢] A) -- XXX: not distinct
+    slices    : ∀ {q} → q ∈ endpoints → Slice M [ p & q ]
+  -}
+  --  ⊎ Slice M [ p ]
 
-        {-
-  ·F : ∀ {Γ A B} {M : Γ ⊢ A ⇒ B} {N : Γ ⊢ A}
-          {pΓAB₀ : Γ [⊢] A ⇒ B} {pΓAB₁ : Γ [⊢] A ⇒ B}
-          {pΓB₀ : Γ [⊢] B} {pΓB₁ : Γ [⊢] B}
-        → R·F pΓAB₀ pΓAB₁ pΓB₀ pΓB₁
-          ⊎
-          R·F pΓAB₀ pΓAB₁ pΓB₁ pΓB₀
-        → Slice M       [ pΓAB₀ & pΓAB₁ ]
-        → Slice (M · N) [ pΓB₀  & pΓB₁ ]
--}
-          {-
-  ·A : ∀ {Γ A B} {M : Γ ⊢ A ⇒ B} {N : Γ ⊢ A}
-          {pΓA₀ : Γ [⊢] A} {pΓA₁ : Γ [⊢] A}
-          {pΓB₀ : Γ [⊢] B} {pΓB₁ : Γ [⊢] B}
-        → R·A pΓA₀ pΓA₁ pΓB₀ pΓB₁
-          ⊎
-          R·A pΓA₀ pΓA₁ pΓB₁ pΓB₀
-        → Slice N       [ pΓA₀  & pΓA₁ ]
-        → Slice (M · N) [ pΓB₀  & pΓB₁ ]
-        -}
+  {-
+data _≈ˢ_ {Γ A} {M : Γ ⊢ A} {p : Γ [⊢] A} : (P Q : Slice M [ p & {!!} ]) → ★ where
 
-  ·A : ∀ {Γ A B C D} {M : Γ ⊢ A ⇒ B} {N : Γ ⊢ A}
-         {x : Γ ∋ C} {pC↑ : Ty[ C ]} {pΓ↑ : Ctx[ x · pC↑ ]}
-         {y : Γ ∋ D} {pD↓ : Ty[ D ]} {pΓ↓ : Ctx[ y · pD↓ ]}
-        → Slice N       [ [ pΓ↑ ]⊢ A & [ pΓ↓ ]⊢ A ]
-        → Slice (M · N) [ [ pΓ↑ ]⊢ B & [ pΓ↓ ]⊢ B ]
-
-Path : ∀ {Γ : Ctx} {A : Ty} (M : Γ ⊢ A) → Γ [⊢] A → ★
-Path {Γ} {A} M p = Σ (Γ [⊢] A) (λ q → Slice M [ p & q ])
-                 ⊎ Slice M [ p ]
-
- -- swp  : ∀ {Γ : Ctx} {A : Ty} {M : Γ ⊢ A} {s} {p : Γ [⊢ _ ] A} {q : Γ [⊢ _ ] A} → Slice M ^ (op s) [ q & p ] → Slice M ^ s [ p & opop⊢ q ]
---  swp' : {Γ : Ctx} {A : Ty} {M : Γ ⊢ A} {p : Γ [⊢ ⁺ ] A} {q : Γ [⊢ ⁻ ] A} → Slice M [ p ⅋ q ] → Slice M [ q & p ]
--- agsy: swp x = {!-c!}
-
+data _≈ᴾ_ {Γ A} {M : Γ ⊢ A} {p : Γ [⊢] A} : (P Q : Path M p) → ★ where
+  c : ∀ e? e?' → e? ≗ e?' → path e? {!!} ≈ᴾ path e?' {!!}
+  -}
+  
 module _ {Γ A} where
     ≈-sym : {p2 q2 : Γ [⊢]2 A} → p2 ≈ q2 → q2 ≈ p2
     ≈-sym refl = refl
@@ -573,20 +379,19 @@ module _ {Γ A} where
     ≈-trans sym sym   = refl
 
     ≈-swp : (p2 : Γ [⊢]2 A) → p2 ≈ swp2 p2
+    ≈-swp []        = refl
     ≈-swp [ p ]     = refl
     ≈-swp [ p & q ] = sym
 
 swp  : ∀ {Γ : Ctx} {A : Ty} {M : Γ ⊢ A} (p2 : Γ [⊢]2 A) → Slice M p2 → Slice M (swp2 p2)
-swp [ p ] (V pΓ x₁) = V pΓ x₁
-swp [ p ] (·FA r·AF P P₁) = ·FA r·AF P P₁
-swp [ p ] (·F P) = ·F P
-swp [ p ] (ƛ ._ P) = ƛ _ (swp _ P)
-swp [ p & q ] (V pΓ x₁) = V pΓ (≈-trans (≈-swp _) x₁)
-swp [ p & q ] (ƛ ._ {{_ ,, _}} P) = ƛ [ q & p ] {{… ,, …}} (swp [ pƛ↑ p … & pƛ↑ q … ] P)
-swp [ ._ & q ] (·FA (·A[Γ&]) P P₁) = ·FA ·A[Γ⅋] P P₁
-swp [ p & ._ ] (·FA (·A[Γ⅋]) P P₁) = ·FA ·A[Γ&] P P₁
-swp [ p & q ] (·F P) = ·F (swp _ P)
-swp [ ._ & ._ ] (·A P) = ·A (swp _ P)
+swp [] P = P
+swp [ p ] P = P
+swp [ p  & q  ] (V pΓ x₁) = V pΓ (≈-trans (≈-swp _) x₁)
+swp [ p  & q  ] (ƛ ._ {{_ ,, _}} P) = ƛ [ q & p ] {{… ,, …}} (swp [ pƛ↑ p … & pƛ↑ q … ] P)
+swp [ ._ & q  ] (app fun-arg P Q) = app arg-fun P Q
+swp [ p  & ._ ] (app arg-fun P Q) = app fun-arg P Q
+swp [ p  & q  ] (app fun     P Q) = app fun (swp _ P) Q
+swp [ ._ & ._ ] (app arg     P Q) = app arg P (swp _ Q)
 
 {-
 ƛ↓ : ∀ {Γ A B} {M : Γ , A ⊢ B} {p₀ p₁}
@@ -595,7 +400,7 @@ swp [ ._ & ._ ] (·A P) = ·A (swp _ P)
 ƛ↓ {Γ} {A} {B} {M} {p₀} {p₁} P = {!ƛ [ p₀ & p₁ ] {{Ok-pƛ↓ p₀ ,, Ok-pƛ↓ p₁}}
                                    ({!≡.subst (λ p → Slice M [ p & _ ]) (≡.sym (pƛ↑pƛ↓ p₀))
                                      (≡.subst (λ p → Slice M [ _ & p ]) (≡.sym (pƛ↑pƛ↓ p₁)) P!})!}
-                                     -}
+-}
 
 _$™_ : ∀ {Γ Δ A} → Γ ⇉ Δ → Γ ⊢ A → Δ ⊢ A
 f $™ (V x)   = V (f x)
@@ -625,16 +430,16 @@ cut M N = subst0 N =<<™ M
 
 infix 0 _↝_
 data _↝_ : ∀ {Γ A} (M N : Γ ⊢ A) → ★ where
-  β : ∀ {Γ A B} {M : Γ , A ⊢ B} {N : Γ ⊢ A} → ƛ M · N ↝ cut M N
+  β     : ∀ {Γ A B} {M : Γ , A ⊢ B} {N : Γ ⊢ A} → ƛ M · N ↝ cut M N
   [_]·_ : ∀ {Γ A B} {M M′ : Γ ⊢ A ⇒ B} {N : Γ ⊢ A} → M ↝ M′ → M · N ↝ M′ · N
   _·[_] : ∀ {Γ A B} {M : Γ ⊢ A ⇒ B} {N N′ : Γ ⊢ A} → N ↝ N′ → M · N ↝ M · N′
-  ƛ : ∀ {Γ A B} {M M′ : Γ , A ⊢ B} → M ↝ M′ → ƛ M ↝ ƛ M′
+  ƛ     : ∀ {Γ A B} {M M′ : Γ , A ⊢ B} → M ↝ M′ → ƛ M ↝ ƛ M′
 
 id™ : ∀ {Γ} → Γ ⊢ a ⇒ a
 id™ = ƛ (V (top a))
 
-pid : Slice id™ [ ε ⊢[ [ ∙ ]⇒ a ] & ε ⊢[ _ ⇒[ ∙ ] ] ]
-pid = ƛ _ (V (ε ,[ ∙ ]) sym) -- by refines and agsy
+pid : Slice id™ [ ε ⊢[ [ [] ]⇒ a ] & ε ⊢[ _ ⇒[ [] ] ] ]
+pid = ƛ _ (V _ sym) -- by refines and agsy
 
 id™′ : ε ⊢ a ⇒ a
 id™′ = ƛ (id™ · V (top a))
@@ -648,22 +453,22 @@ V0 = V (top _)
 V1 : ∀ {Γ A B} → Γ , A , B ⊢ A
 V1 = V (pop _ (top _))
 
-pV0 : ∀ {Γ A p} → Slice (V0 {Γ} {A}) [ [ Γ ,[ p ] ]⊢ A & Γ , A ⊢[ p ] ] 
-pV0 = V (_ ,[ _ ]) sym
+pV0 : ∀ {Γ A p} → Slice (V0 {Γ} {A}) [ Γ , A ⊢[ p ] & [ Γ ,[ p ] ]⊢ A ] 
+pV0 = V (_ ,[ _ ]) refl
 
-pV1 : ∀ {Γ A B p} → Slice (V1 {Γ} {A} {B}) [ [ [ Γ ,[ p ] ], B ]⊢ A & _ ⊢[ p ] ]
-pV1 = V ([ _ ,[ _ ] ], _) sym
+pV1 : ∀ {Γ A B p} → Slice (V1 {Γ} {A} {B}) [ _ ⊢[ p ] & [ [ Γ ,[ p ] ], B ]⊢ A ]
+pV1 = V ([ _ ,[ _ ] ], _) refl
 
 -- λ f. λ x. f x x
 ex₀ : ε ⊢ (a ⇒ a ⇒ b) ⇒ a ⇒ b
 ex₀ = ƛ (ƛ (V (pop _ (top (a ⇒ a ⇒ b))) · V (top a) · V (top a)))
 
-p₀ex₀ : Slice ex₀ [ ε ⊢[ (a ⇒ a ⇒ b) ⇒[ [ ∙ ]⇒ b ] ]
-                 & ε ⊢[ [ [ ∙ ]⇒ a ⇒ b ]⇒ a ⇒ b ] ]
-p₀ex₀ = ƛ _ (ƛ _ (·F (·FA ·A[Γ&] (V _ refl) (V _ sym))))
+p₀ex₀ : Slice ex₀ [ ε ⊢[ (a ⇒ a ⇒ b) ⇒[ [ [] ]⇒ b ] ]
+                 & ε ⊢[ [ [ [] ]⇒ a ⇒ b ]⇒ a ⇒ b ] ]
+p₀ex₀ = ƛ _ (ƛ _ (app fun (app fun-arg (V _ refl) (V _ sym)) []))
 
-p₁ex₀ : Slice ex₀ [ _ ⊢[ _ ⇒[ [ ∙ ]⇒ _ ] ] & _ ⊢[ [ _ ⇒[ [ ∙ ]⇒ _ ] ]⇒ _ ] ]
-p₁ex₀ = ƛ _ (ƛ _ (·FA ·A[Γ&] (·F (V _ refl)) (V _ sym)))
+p₁ex₀ : Slice ex₀ [ _ ⊢[ _ ⇒[ [ [] ]⇒ _ ] ] & _ ⊢[ [ _ ⇒[ [ [] ]⇒ _ ] ]⇒ _ ] ]
+p₁ex₀ = ƛ _ (ƛ _ (app fun-arg (app fun (V _ refl) []) (V _ sym)))
 
 {-
 data Unie {Γ A} : (p₀ p₁ q₀ q₁ : Γ [⊢] A) → ★ where
@@ -683,48 +488,40 @@ Unie p₀ p₁ q₀ q₁ = (pf : p₀ ≡ q₀ ⊎ p₀ ≡ q₁) → Unie' p₀
 
 module _ {Γ A B} where
     p·F-inj : ∀ {p q : Γ [⊢] B} → p·F {Γ} {A} p ≡ p·F {Γ} {A} q → p ≡ q
-    p·F-inj {[ .p ]⊢ .B} {[ p ]⊢ .B} ≡.refl = ≡.refl
-    p·F-inj {[ p ]⊢ .B} {.Γ ⊢[ pC ]} ()
-    p·F-inj {.Γ ⊢[ pC ]} {[ p ]⊢ .B} ()
-    p·F-inj {.Γ ⊢[ .pC ]} {.Γ ⊢[ pC ]} ≡.refl = ≡.refl
+    p·F-inj {[ .p₁ ]⊢- } {[ p₁ ]⊢- } ≡.refl = ≡.refl
+    p·F-inj {[ p ]⊢- } { -⊢[ pC ]} ()
+    p·F-inj { -⊢[ pC ]} {[ p ]⊢- } ()
+    p·F-inj { -⊢[ .pC₁ ]} { -⊢[ pC₁ ]} ≡.refl = ≡.refl
 
     pƛ↑-inj : ∀ {p q : Γ [⊢] A ⇒ B} (p-ok : Ok p) (q-ok : Ok q) → pƛ↑ p p-ok ≡ pƛ↑ q q-ok → p ≡ q
-    pƛ↑-inj {[ .p₁ ]⊢ .(A ⇒ B)} {[ p₁ ]⊢ .(A ⇒ B)} p-ok q-ok ≡.refl = ≡.refl
-    pƛ↑-inj {[ p ]⊢ .(A ⇒ B)} {.Γ ⊢[ ∙ ]} p-ok () pf
-    pƛ↑-inj {[ p ]⊢ .(A ⇒ B)} {.Γ ⊢[ [ pC ]⇒ .B ]} p-ok q-ok ()
-    pƛ↑-inj {[ p ]⊢ .(A ⇒ B)} {.Γ ⊢[ .A ⇒[ pC ] ]} p-ok q-ok ()
-    pƛ↑-inj {.Γ ⊢[ ∙ ]} {[ p ]⊢ .(A ⇒ B)} () q-ok pf
-    pƛ↑-inj {.Γ ⊢[ [ pC ]⇒ .B ]} {[ p ]⊢ .(A ⇒ B)} p-ok _ ()
-    pƛ↑-inj {.Γ ⊢[ .A ⇒[ pC ] ]} {[ p ]⊢ .(A ⇒ B)} p-ok q-ok ()
-    pƛ↑-inj {.Γ ⊢[ ∙ ]} {.Γ ⊢[ ∙ ]} p-ok q-ok pf = {!!}
-    pƛ↑-inj {.Γ ⊢[ ∙ ]} {.Γ ⊢[ [ pC₁ ]⇒ .B ]} p-ok q-ok pf = {!!}
-    pƛ↑-inj {.Γ ⊢[ ∙ ]} {.Γ ⊢[ .A ⇒[ pC₁ ] ]} p-ok q-ok pf = {!!}
-    pƛ↑-inj {.Γ ⊢[ [ pC ]⇒ .B ]} {.Γ ⊢[ ∙ ]} p-ok q-ok pf = {!!}
-    pƛ↑-inj {.Γ ⊢[ [ pC ]⇒ .B ]} {.Γ ⊢[ [ pC₁ ]⇒ .B ]} p-ok q-ok pf = {!!}
-    pƛ↑-inj {.Γ ⊢[ [ pC ]⇒ .B ]} {.Γ ⊢[ .A ⇒[ pC₁ ] ]} p-ok q-ok pf = {!!}
-    pƛ↑-inj {.Γ ⊢[ .A ⇒[ pC ] ]} {.Γ ⊢[ ∙ ]} p-ok q-ok pf = {!!}
-    pƛ↑-inj {.Γ ⊢[ .A ⇒[ pC ] ]} {.Γ ⊢[ [ pC₁ ]⇒ .B ]} p-ok q-ok pf = {!!}
-    pƛ↑-inj {.Γ ⊢[ .A ⇒[ pC ] ]} {.Γ ⊢[ .A ⇒[ pC₁ ] ]} p-ok q-ok pf = {!!}
+    pƛ↑-inj {p} {q} p-ok q-ok pf = !(pƛ↓pƛ↑ p) ∙ ap pƛ↓ pf ∙ pƛ↓pƛ↑ q
+
+    {-
+    pƛ↓-inj : ∀ {p q : Γ , A [⊢] B} → pƛ↓ p ≡ pƛ↓ q → p ≡ q
+    pƛ↓-inj {p} {q} pf = !(pƛ↑pƛ↓ p) ∙ ap (λ x → pƛ↑ x ({!!})) pf ∙ pƛ↑pƛ↓ q
+    -}
 
 uniCtx : ∀ {Γ A} (x : Γ ∋ A) {pᴬ : Ty[ A ]} → (pΓ pΓ' : Ctx[ x · pᴬ ]) → pΓ ≡ pΓ'
-uniCtx {.(Γ , A)} {A} (top {Γ} .A) {pᴬ} (.Γ ,[ .pᴬ ]) (.Γ ,[ .pᴬ ]) = ≡.refl
-uniCtx (pop B x) ([ pΓ ], .B) ([ pΓ' ], .B) rewrite uniCtx x pΓ pΓ' = ≡.refl
+uniCtx (top _) -,[ ._ ] -,[ _ ] = ≡.refl
+uniCtx (pop _ x) [ pΓ ],- [ pΓ' ],- rewrite uniCtx x pΓ pΓ' = ≡.refl
 
 --[]⊢-inj : 
 
+{-
 unie : ∀ {Γ} {A : Ty} {M : Γ ⊢ A} {b p q : Γ [⊢] A} (P : Slice M [ b & p ]) (Q : Slice M [ b & q ]) → p ≡ q
 unie (V pΓ refl) (V pΓ₁ refl) rewrite uniCtx _ pΓ pΓ₁ = ≡.refl
 unie (V .pΓ₁ sym) (V pΓ₁ sym) = ≡.refl
 unie {b = b'} {p} {q} (ƛ ._ {{_ ,, _}} P) (ƛ ._ {{_ ,, _}} Q) = pƛ↑-inj … … (unie P Q)
-unie (·FA r·AF P P₁) (·FA r·AF₁ Q Q₁) = {!!}
-unie (·FA r·AF P P₁) (·F Q) = {!!}
-unie (·FA r·AF P P₁) (·A Q) = {!!}
-unie (·F P) (·FA r·AF Q Q₁) = {!!}
-unie (·F P) (·F Q) = p·F-inj (unie P Q)
-unie (·F P) (·A Q) = {!!}
-unie (·A P) (·FA r·AF Q Q₁) = {!!}
-unie (·A P) (·F Q) = {!!}
-unie (·A P) (·A Q) = {![]⊢-inj (unie P Q)!}
+unie (app r P P₁) (app r·AF₁ Q Q₁) = {!!}
+unie (app r P P₁) (app fun Q Q₁) = {!!}
+unie (app r P P₁) (app arg Q Q₁) = {!!}
+unie (app fun P) (app r Q Q₁) = {!!}
+unie (app fun P) (fun Q) = p·F-inj (unie P Q)
+unie (app fun P) (arg Q) = {!!}
+unie (arg P) (app r Q Q₁) = {!!}
+unie (arg P) (fun Q) = {!!}
+unie (arg P) (arg Q) = {![]⊢-inj (unie P Q)!}
+-}
 
 {-
 unie : ∀ {Γ A} {M : Γ ⊢ A} {p₀ p₁ q₀ q₁ : Γ [⊢] A} (P : Slice M [ p₀ & p₁ ]) (Q : Slice M [ q₀ & q₁ ]) → Unie p₀ p₁ q₀ q₁
@@ -732,7 +529,7 @@ unie : ∀ {Γ A} {M : Γ ⊢ A} {p₀ p₁ q₀ q₁ : Γ [⊢] A} (P : Slice M
 
 --P same-path Q = ∃ (π : Iso (Γ [⊢] A)). Slice M [ b & p ] ∈ P → Slice M [ b & π p ] ∈ Q
 
-uni : ∀ {Γ A} {M : Γ ⊢ A} {b e₀ e₁ : Γ [⊢] A} (P : Slice M [ b & e₀ ]) (Q : Slice M [ b & e₁ ]) → {!P !} -- Σ (e₀ ≡ e₁) (λ π → subst (λ e → Slice M [ b & e ]) π P ≡ Q)
+uni : ∀ {Γ A} {M : Γ ⊢ A} {b : Γ [⊢] A} (P : Path M b) (Q : Path M b) → {!P !} -- Σ (e₀ ≡ e₁) (λ π → subst (λ e → Slice M [ b & e ]) π P ≡ Q)
 uni P Q = {!-c cong!}
 {-
 uni P Q = {!-c cong!}
@@ -799,25 +596,25 @@ module MCE where
     M = (ƛ (ƛ (V (pop a (pop (a ⇒ a) (top a)))))) · ƛ (V (top a)) · V (top a)
 
     p0 : Γ [⊢] A
-    p0 = [ ε ,[ ∙ ] ]⊢ _
+    p0 = [ ε ,[ [] ] ]⊢ _
 
     p1 : Γ [⊢] A
-    p1 = _ ⊢[ ∙ ]
+    p1 = _ ⊢[ [] ]
 
     P0 : Slice M [ p0 & p1 ]
-    P0 = {!!} ·A[Γ&B] V[Γ&A] (ε ,[ ∙ ])
+    P0 = {!!} ·A[Γ&B] V[Γ&A] (ε ,[ [] ])
 
     {-
-    P1-0 : Slice (V (pop a (pop (a ⇒ a) (top {ε} a)))) [ [ [ [ _ ,[ ∙ ] ], _ ], _ ]⊢ a & _ ⊢[ ∙ ] ]
-    P1-0 = V[Γ&A] ([ [ ε ,[ ∙ ] ], a ⇒ a ], a)
+    P1-0 : Slice (V (pop a (pop (a ⇒ a) (top {ε} a)))) [ [ [ [ _ ,[ [] ] ], _ ], _ ]⊢ a & _ ⊢[ [] ] ]
+    P1-0 = V[Γ&A] ([ [ ε ,[ [] ] ], a ⇒ a ], a)
 
-    P1-1 : Slice (ƛ (V (pop a (pop (a ⇒ a) (top {ε} a))))) [ [ [ _ ,[ ∙ ] ], _ ]⊢ _ & _ ⊢[ _ ⇒[ ∙ ] ] ]
+    P1-1 : Slice (ƛ (V (pop a (pop (a ⇒ a) (top {ε} a))))) [ [ [ _ ,[ [] ] ], _ ]⊢ _ & _ ⊢[ _ ⇒[ [] ] ] ]
     P1-1 = ƛ[Γ&B] P1-0
 
-    P1-2 : Slice (ƛ (ƛ (V (pop a (pop (a ⇒ a) (top {ε} a)))))) [ [ _ ,[ ∙ ] ]⊢ _ & _ ⊢[ _ ⇒[ _ ⇒[ ∙ ] ] ] ]
+    P1-2 : Slice (ƛ (ƛ (V (pop a (pop (a ⇒ a) (top {ε} a)))))) [ [ _ ,[ [] ] ]⊢ _ & _ ⊢[ _ ⇒[ _ ⇒[ [] ] ] ] ]
     P1-2 = ƛ[Γ&B] P1-1
 
-    P1-3 : Slice (ƛ (ƛ (V (pop a (pop (a ⇒ a) (top {ε} a))))) · ƛ (V (top a))) [ [ _ ,[ ∙ ] ]⊢ _ & _ ⊢[ _ ⇒[ ∙ ] ] ]
+    P1-3 : Slice (ƛ (ƛ (V (pop a (pop (a ⇒ a) (top {ε} a))))) · ƛ (V (top a))) [ [ _ ,[ [] ] ]⊢ _ & _ ⊢[ _ ⇒[ [] ] ] ]
     P1-3 = P1-2 ·[Γ&B]
     -}
 
